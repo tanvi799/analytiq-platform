@@ -5,7 +5,7 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 
-const API = "https://analytiq-api.onrender.com";
+const API = "https://analytiq-api-dmmq.onrender.com";
 const ThemeCtx = createContext();
 const useTheme = () => useContext(ThemeCtx);
 
