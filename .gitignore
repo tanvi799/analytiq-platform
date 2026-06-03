@@ -12,3 +12,5 @@ ml/features_with_rfm.csv
 ml/segments.csv
 infra/cdk.out/
 *.zip
+.vercel
+.env*
