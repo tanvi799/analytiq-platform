@@ -40,14 +40,21 @@ app.add_middleware(
 
 # ── DB helper ─────────────────────────────────────────────────────────────────
 def query(sql: str) -> list[dict]:
-    conn = psycopg2.connect(
-        host=REDSHIFT_HOST, port=REDSHIFT_PORT,
-        dbname=REDSHIFT_DB, user=REDSHIFT_USER, password=REDSHIFT_PASS,
-        connect_timeout=15,
-    )
-    df = pd.read_sql(sql, conn)
-    conn.close()
-    return df.to_dict(orient="records")
+    try:
+        conn = psycopg2.connect(
+            host=REDSHIFT_HOST,
+            port=REDSHIFT_PORT,
+            dbname=REDSHIFT_DB,
+            user=REDSHIFT_USER,
+            password=REDSHIFT_PASSWORD,
+            connect_timeout=15,
+        )
+        df = pd.read_sql(sql, conn)
+        conn.close()
+        return df.to_dict(orient="records")
+    except Exception as e:
+        print("DB ERROR:", e)
+        return []
 
 
 # ── Load ML models once at startup ────────────────────────────────────────────
