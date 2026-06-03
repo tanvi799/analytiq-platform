@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.pyc
+*.pkl
+*.egg-info/
+.env
+.DS_Store
+node_modules/
+dashboard/dist/
+ml/churn_scores.csv
+ml/features_with_rfm.csv
+ml/segments.csv
+infra/cdk.out/
+*.zip
