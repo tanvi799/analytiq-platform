@@ -16,7 +16,7 @@
 
 <br/>
 
-**[🚀 Live Dashboard](https://analytiq-dashboard.vercel.app)** &nbsp;·&nbsp; **[⚡ Live API](https://analytiq-api-dmmq.onrender.com/health)** &nbsp;·&nbsp; **[📁 GitHub](https://github.com/tanvi799/analytiq-platform)**
+**[ Live Dashboard]((https://analytiq-dashboard-alpha.vercel.app))** &nbsp;·&nbsp; **[ Live API](https://analytiq-api-dmmq.onrender.com/health)** &nbsp;·&nbsp; **[ GitHub](https://github.com/tanvi799/analytiq-platform)**
 
 <br/>
 
@@ -241,11 +241,6 @@ Open **http://localhost:5173**
 Bachelor of IT — Cloud Analytics, La Trobe University, Melbourne
 
 [![GitHub](https://img.shields.io/badge/GitHub-tanvi799-181717?style=flat-square&logo=github)](https://github.com/tanvi799)
-
-> Part of a two-project AWS cloud portfolio:
-> - **AnalytIQ** — SaaS Customer Analytics Platform *(this repo)*
-> - **[AWS Fraud Detection & Operations Monitor](https://aws-fraud-operations-monitor.vercel.app)** — Real-time fraud detection pipeline
-
 ---
 
 <div align="center">
