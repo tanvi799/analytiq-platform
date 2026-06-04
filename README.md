@@ -16,7 +16,7 @@
 
 <br/>
 
-**[ Live Dashboard]((https://analytiq-dashboard-alpha.vercel.app))** &nbsp;·&nbsp; **[ Live API](https://analytiq-api-dmmq.onrender.com/health)** &nbsp;·&nbsp; **[ GitHub](https://github.com/tanvi799/analytiq-platform)**
+**[ Live Dashboard](https://analytiq-dashboard-alpha.vercel.app)** &nbsp;·&nbsp; **[ Live API](https://analytiq-api-dmmq.onrender.com/health)** &nbsp;·&nbsp; **[ GitHub](https://github.com/tanvi799/analytiq-platform)**
 
 <br/>
 
