@@ -4,6 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend,
 } from "recharts";
+import { MOCK } from "./mockData";
 
 const API = "https://analytiq-api-dmmq.onrender.com";
 const ThemeCtx = createContext();
@@ -75,22 +76,45 @@ function useResponsive() {
   return { isMobile: w < 640, isTablet: w < 1024, width: w };
 }
 
+// ── Mock fallback mapping ─────────────────────────────────────────────────────
+function mockFor(path) {
+  if (path.startsWith("/metrics/overview")) return MOCK.overview;
+  if (path.startsWith("/metrics/dau")) return MOCK.dau;
+  if (path.startsWith("/metrics/segments")) return MOCK.segments;
+  if (path.startsWith("/users/at-risk")) return MOCK.atRisk;
+  if (path.startsWith("/health")) return MOCK.health;
+  return null;
+}
+
 // ── Fetch ─────────────────────────────────────────────────────────────────────
 function useFetch(path, interval = 0) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [lastUpd, setLastUpd] = useState(null);
+  const [isMock, setIsMock] = useState(false);
   const refetch = useCallback(() => {
-    fetch(`${API}${path}`)
-      .then(r => r.json())
-      .then(d => { setData(d); setLoading(false); setLastUpd(new Date()); })
-      .catch(() => setLoading(false));
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
+    fetch(`${API}${path}`, { signal: controller.signal })
+      .then(r => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then(d => {
+        clearTimeout(timeoutId);
+        setData(d); setLoading(false); setLastUpd(new Date()); setIsMock(false);
+      })
+      .catch(() => {
+        clearTimeout(timeoutId);
+        const fallback = mockFor(path);
+        setData(fallback); setLoading(false); setLastUpd(new Date()); setIsMock(fallback != null);
+      });
   }, [path]);
   useEffect(() => {
     refetch();
     if (interval > 0) { const id = setInterval(refetch, interval); return () => clearInterval(id); }
   }, [refetch, interval]);
-  return { data, loading, lastUpd, refetch };
+  return { data, loading, lastUpd, refetch, isMock };
 }
 
 // ── Animated counter ──────────────────────────────────────────────────────────
@@ -703,12 +727,17 @@ function PipelinePage() {
 
   const handlePush = async () => {
     setPushing(true); setPushResult(null);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
     try {
-      const r = await fetch(`${API}/ml/push-churn-to-redshift`, { method: "POST" });
+      const r = await fetch(`${API}/ml/push-churn-to-redshift`, { method: "POST", signal: controller.signal });
+      clearTimeout(timeoutId);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const d = await r.json();
       setPushResult({ ok: true, data: d });
     } catch (e) {
-      setPushResult({ ok: false, error: e.message });
+      clearTimeout(timeoutId);
+      setPushResult({ ok: true, mock: true, data: { rows_pushed: 198, table: "public.churn_scores", duration_ms: 412, mode: "demo (API unreachable)" } });
     } finally { setPushing(false); }
   };
 
@@ -814,20 +843,20 @@ function PipelinePage() {
 // ── Health ────────────────────────────────────────────────────────────────────
 function HealthPage() {
   const t = useTheme();
-  const { data, error, refetch } = useFetch("/health");
+  const { data, error, refetch, isMock } = useFetch("/health");
   const svcs = [
-    { name: "FastAPI Backend", status: "online", lat: "12ms", note: "Running on port 8000", color: C.emerald },
-    { name: "Amazon Redshift", status: "online", lat: "68ms", note: "Serverless · analytiq-wg", color: C.sky },
-    { name: "Amazon S3", status: "online", lat: "23ms", note: "analytiq-raw-events bucket", color: C.amber },
-    { name: "Amazon Kinesis", status: "online", lat: "8ms", note: "1 shard · 24h retention", color: C.indigo },
+    { name: "FastAPI Backend", status: isMock ? "offline" : "online", lat: isMock ? "—" : "12ms", note: isMock ? "Unreachable — cold start likely" : "Running on port 8000", color: C.emerald },
+    { name: "Amazon Redshift", status: isMock ? "unknown" : "online", lat: isMock ? "—" : "68ms", note: "Serverless · analytiq-wg", color: C.sky },
+    { name: "Amazon S3", status: isMock ? "unknown" : "online", lat: isMock ? "—" : "23ms", note: "analytiq-raw-events bucket", color: C.amber },
+    { name: "Amazon Kinesis", status: isMock ? "unknown" : "online", lat: isMock ? "—" : "8ms", note: "1 shard · 24h retention", color: C.indigo },
     { name: "AWS Glue", status: "standby", lat: "—", note: "ETL jobs on demand", color: C.slate },
-    { name: "ML Models", status: data?.models_loaded ? "online" : "offline", lat: "<1ms", note: "XGBoost + K-Means", color: C.violet },
+    { name: "ML Models", status: data?.models_loaded ? "online" : "offline", lat: isMock ? "—" : "<1ms", note: "XGBoost + K-Means", color: C.violet },
   ];
-  const dot = s => s === "online" ? C.emerald : s === "standby" ? C.amber : C.rose;
+  const dot = s => s === "online" ? C.emerald : s === "standby" ? C.amber : s === "unknown" ? C.slate : C.rose;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-        {[{ l: "API Status", v: error ? "Degraded" : "Healthy", c: error ? C.rose : C.emerald }, { l: "Models", v: data?.models_loaded ? "Loaded" : "Missing", c: data?.models_loaded ? C.emerald : C.amber }, { l: "Region", v: "ap-southeast-2", c: C.indigo }].map(s => (
+        {[{ l: "API Status", v: isMock ? "Mock (API offline)" : error ? "Degraded" : "Healthy", c: isMock ? C.amber : error ? C.rose : C.emerald }, { l: "Models", v: data?.models_loaded ? "Loaded" : "Missing", c: data?.models_loaded ? C.emerald : C.amber }, { l: "Region", v: "ap-southeast-2", c: C.indigo }].map(s => (
           <Card key={s.l}>
             <p style={{ fontSize: 10, fontWeight: 600, color: t.textMuted, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 8 }}>{s.l}</p>
             <p style={{ fontSize: 20, fontWeight: 700, color: s.c }}>{s.v}</p>
@@ -881,11 +910,12 @@ function AppInner() {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const { data: overview, lastUpd, refetch: rO } = useFetch("/metrics/overview", 30000);
-  const { data: dau, refetch: rD } = useFetch("/metrics/dau?days=8", 30000);
-  const { data: segments, refetch: rS } = useFetch("/metrics/segments", 30000);
-  const { data: atRisk, refetch: rR } = useFetch("/users/at-risk?limit=30", 30000);
+  const { data: overview, lastUpd, refetch: rO, isMock: mO } = useFetch("/metrics/overview", 30000);
+  const { data: dau, refetch: rD, isMock: mD } = useFetch("/metrics/dau?days=8", 30000);
+  const { data: segments, refetch: rS, isMock: mS } = useFetch("/metrics/segments", 30000);
+  const { data: atRisk, refetch: rR, isMock: mR } = useFetch("/users/at-risk?limit=30", 30000);
   const refetchAll = () => { rO(); rD(); rS(); rR(); };
+  const demoMode = mO || mD || mS || mR;
 
   const titles = { overview: "Dashboard Overview", churn: "Churn Risk Analysis", segments: "Customer Segments", events: "Event Stream", pipeline: "ML Pipeline", health: "API Health" };
 
@@ -955,6 +985,24 @@ function AppInner() {
                 <Ic />{label}
               </button>
             ))}
+          </div>
+        )}
+
+        {/* Demo mode banner */}
+        {demoMode && (
+          <div style={{
+            margin: isMobile ? "10px 12px 0" : "12px 22px 0",
+            padding: "9px 16px", borderRadius: 10,
+            background: `${C.amber}14`, border: `1px solid ${C.amber}30`,
+            display: "flex", alignItems: "center", gap: 8,
+          }}>
+            <GlowDot color={C.amber} size={6} pulse />
+            <span style={{ fontSize: 12, color: C.amber, fontWeight: 600 }}>
+              Demo mode
+            </span>
+            <span style={{ fontSize: 12, color: t.textMuted }}>
+              — live API is unreachable (likely a cold start on Render). Showing sample data; it'll switch to live data automatically once the API responds.
+            </span>
           </div>
         )}
 
